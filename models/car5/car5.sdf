@@ -1,0 +1,145 @@
+<?xml version="1.0"?>
+<sdf version='1.5'>
+  <model name="car5">
+  <link name='car_body'>
+    <pose>0 0 0.19 0 0 0</pose>
+    <inertial>
+      <inertia>
+        <ixx>1e6</ixx>
+        <ixy>0</ixy>
+        <ixz>0</ixz>
+        <iyy>1e6</iyy>
+        <iyz>0</iyz>
+        <izz>1e6</izz>
+      </inertia>
+      <mass>1e6</mass>
+    </inertial>
+    <collision name='collision'>
+      <geometry>
+        <box>
+          <size>0.32 0.64 0.38</size>
+        </box>
+      </geometry>
+    </collision>
+    <visual name='visual'>
+      <geometry>
+        <box>
+          <size>0.32 0.64 0.38</size>
+        </box>
+      </geometry>
+        <material>
+          <ambient>0 1 0 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0 0.5 0 0</specular>
+          <emissive>0 0 0 1</emissive>
+        </material>
+    </visual>
+  </link>
+
+  <link name='car_top'>
+    <pose>0 0.16 0.57 0 0 0</pose>
+    <inertial>
+      <inertia>
+        <ixx>1e6</ixx>
+        <ixy>0</ixy>
+        <ixz>0</ixz>
+        <iyy>1e6</iyy>
+        <iyz>0</iyz>
+        <izz>1e6</izz>
+      </inertia>
+      <mass>1e6</mass>
+    </inertial>
+    <collision name='collision'>
+      <geometry>
+        <box>
+          <size>0.32 0.32 0.38</size>
+        </box>
+      </geometry>
+    </collision>
+    <visual name='visual'>
+      <geometry>
+        <box>
+          <size>0.32 0.32 0.38</size>
+        </box>
+      </geometry>
+        <material>
+          <ambient>0 1 0 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0 0.5 0 0</specular>
+          <emissive>0 0 0 1</emissive>
+        </material>
+    </visual>
+  </link>
+
+  <link name='plate_cover1'>
+    <pose>0 0.321 0.32 0 0 0</pose>
+    <inertial>
+      <inertia>
+        <ixx>1e6</ixx>
+        <ixy>0</ixy>
+        <ixz>0</ixz>
+        <iyy>1e6</iyy>
+        <iyz>0</iyz>
+        <izz>1e6</izz>
+      </inertia>
+      <mass>1e6</mass>
+    </inertial>
+    <collision name='collision'>
+      <geometry>
+        <box>
+          <size>1e-6 1e-6 1e-6</size>
+        </box>
+      </geometry>
+    </collision>
+    <visual name='visual'>
+      <geometry>
+        <box>
+          <size>0.32 1e-4 0.22</size>
+        </box>
+      </geometry>
+        <material>
+          <ambient>0 1 0 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0 0.5 0 0</specular>
+          <emissive>0 0 0 1</emissive>
+        </material>
+    </visual>
+  </link>
+
+  <link name='plate'>
+    <pose>0 0.32 0.325 0 0 0</pose>
+    <inertial>
+      <inertia>
+        <ixx>1e6</ixx>
+        <ixy>0</ixy>
+        <ixz>0</ixz>
+        <iyy>1e6</iyy>
+        <iyz>0</iyz>
+        <izz>1e6</izz>
+      </inertia>
+      <mass>1e6</mass>
+    </inertial>
+    <collision name='collision'>
+      <geometry>
+        <box>
+          <size>1e-6 1e-6 1e-6</size>
+        </box>
+      </geometry>
+    </collision>
+    <visual name='visual'>
+      <geometry>
+        <box>
+          <size>0.28 1e-4 0.55</size>
+        </box>
+      </geometry>
+      <material>
+        <script>
+          <uri>file://materials/scripts</uri>
+          <uri>file://materials/textures</uri>
+          <name>car5</name>
+        </script>
+      </material>
+    </visual>
+  </link>
+</model>
+</sdf>
