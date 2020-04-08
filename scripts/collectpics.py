@@ -9,7 +9,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 
-img_dump = "/home/maria/enph353_ws/src/competition/scripts/env_images/"
+img_dump = "/home/maria/enph353_ws/src/competition/scripts/images/plate_detection_training/"
 
 class image_writer:
 
@@ -20,7 +20,7 @@ class image_writer:
   def callback(self,data):
     time = int(10*rospy.get_time())
 
-    if time%5 == 0:
+    if time%40 == 0:
         try:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
