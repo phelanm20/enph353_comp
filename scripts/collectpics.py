@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-print("GOOD JOB PHELAN")
+print("PICTURES WILL BE COLLECTED HEADS UP")
 #Takes images of license plates and surrounding environment for training purposes
 
 import sys
@@ -9,7 +9,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 
-img_dump = "/home/maria/enph353_ws/src/competition/scripts/images/plate_detection_training/"
+img_dump = "/home/maria/enph353_ws/src/competition/scripts/images/fresh_plate_images/"
 
 class image_writer:
 
