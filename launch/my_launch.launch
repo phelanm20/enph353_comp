@@ -23,4 +23,10 @@
          output="screen">
    </node>
 
+   <node pkg="competition_2019t2"
+         type="drive.py"
+         name="drive" 
+         output="screen">
+   </node>
+
 </launch>
