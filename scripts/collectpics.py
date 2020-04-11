@@ -9,25 +9,30 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 
-img_dump = "/home/maria/enph353_ws/src/competition/scripts/images/fresh_plate_images/"
+readRate = 20
+img_dump = "/home/fizzer/enph353_ws/src/competition/scripts/images/fresh_plate_images/"
 
 class image_writer:
-
+	
+  timeSinceLastRead = 0
+  timeOfLastRead = 0
   def __init__(self):
+    print("img_init")
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("/rrbot/camera1/image_raw", Image, self.callback)
 
   def callback(self,data):
     time = int(10*rospy.get_time())
-
-    if time%40 == 0:
+    image_writer.timeSinceLastRead = time - image_writer.timeOfLastRead
+    if time%readRate == 0 or image_writer.timeSinceLastRead > readRate:
+	image_writer.timeOfLastRead = time
+	print("Collected image at time: " + str(time))
         try:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e)
 
         cv2.imwrite(img_dump + str(time) + ".png", cv_image)
-        print(str(time) + ": new image loaded")
 
 def main(args):
   ic = image_writer()

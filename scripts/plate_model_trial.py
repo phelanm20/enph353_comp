@@ -13,14 +13,14 @@ from os import listdir
 from os.path import isfile, join
 import matplotlib.pyplot as plt
 
-test_dir = "/home/maria/enph353_ws/src/competition/scripts/images/plate_training/"
+test_dir = "/home/fizzer/enph353_ws/src/competition/scripts/images/plate_training/"
 paths = [ join(test_dir, f) for f in listdir(test_dir) if isfile(join(test_dir, f)) ]
 
 #Load Model
 sess = tf.Session(target='', graph=None, config=None)
 graph = tf.get_default_graph()
 backend.set_session(sess)
-new_model = models.load_model('/home/maria/enph353_ws/src/competition/scripts/plate_model.h5')
+new_model = models.load_model('/home/fizzer/enph353_ws/src/competition/scripts/plate_model.h5')
 
 for n in range (0, len(listdir(test_dir)) - 22) :
   plate = cv.imread(paths[n], 0)

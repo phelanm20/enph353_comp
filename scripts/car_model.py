@@ -17,7 +17,7 @@ from keras import layers, models, optimizers, backend
 from keras.utils import plot_model, to_categorical
 from sklearn.metrics import confusion_matrix
 
-img_dir = "/home/maria/enph353_ws/src/competition/scripts/images/read_noread_training/"
+img_dir = "/home/fizzer/enph353_ws/src/competition/scripts/images/read_noread_training/"
 
 
 #Create list of environment images
@@ -76,7 +76,7 @@ plt.legend(['train accuracy', 'val accuracy'], loc='upper left')
 plt.show()
 
 #Save Model
-conv_model.save('/home/maria/enph353_ws/src/competition/scripts/car_model.h5')
+conv_model.save('/home/fizzer/enph353_ws/src/competition/scripts/car_model.h5')
 
 #Display images in the training data set
 def displayImage(index):

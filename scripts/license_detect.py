@@ -10,7 +10,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import cv2 as cv
 import time
 
-plate_dir = "/home/maria/enph353_ws/src/competition/scripts/images/fresh_images/"
+plate_dir = "/home/fizzer/enph353_ws/src/competition/scripts/images/fresh_images/"
 
 class plate_reader:
 
@@ -19,7 +19,7 @@ class plate_reader:
     self.sess = tf.Session(target='', graph=None, config=None)
     self.graph = tf.get_default_graph()
     backend.set_session(self.sess)
-    self.new_model = models.load_model('/home/maria/enph353_ws/src/competition/scripts/car_model.h5')
+    self.new_model = models.load_model('/home/fizzer/enph353_ws/src/competition/scripts/car_model.h5')
     self.gumbo = 1
     
     #Load Image
