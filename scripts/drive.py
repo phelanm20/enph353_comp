@@ -22,6 +22,8 @@ readRate = 20
 #IMAGE/MAPPING
 width = 640
 height = 480
+imageCentreY = height/2
+imageCentreX = width/2
 TY = 455
 BY = 480
 X1 = 100
@@ -35,15 +37,16 @@ tBound = height/2
 
 #MOTION/CORNERING
 speed = 0.25
-dT = 1.5
+dT = 1.25
 TDConvert = speed*dT*1.1
-turnTime = 1.8
+turnTime = 1.7
 turnSpeed = 2.75
-creepTime = 2
+creepTime = 2.1
 creepSpeed = 2
-P_straight = 0.0045
-P_turn = 0.0055
-Tolerance = 3
+P_straight = 0.25
+P_turn = 0.25
+Tolerance = 15
+AngTolerance = 0.1
 
 #ANGLES
 angleAdj = 25.0001
@@ -53,14 +56,21 @@ camHeight = 1
 #LEFT TRACK
 lBL = 0, height-30
 lBR = 135, height
-lTL = width/2-5, height/2
-lTR = width/2+5, height/2   
+lTL = imageCentreX-5, imageCentreY
+lTR = imageCentreX+5, imageCentreY   
   
 #RIGHT TRACK
 rBL = width-135, height
 rBR = width, height-30
-rTL = width/2-5, height/2
-rTR = width/2+5, height/2   
+rTL = imageCentreX-5, imageCentreY
+rTR = imageCentreX+5, imageCentreY   
+
+#TRACKING
+LY = height-10
+UY = height-100
+LYTheta = float(imageCentreY+angleAdj-LY)*dPixdTheta
+UYTheta = float(imageCentreY+angleAdj-UY)*dPixdTheta
+deltaTheta = LYTheta-UYTheta
 
 class drive:
         nextDistL = 0
@@ -85,104 +95,74 @@ class drive:
 	        print("Processing Image at time: " + str(time))
 		grayImage = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
                 (thresh, BWImage) = cv.threshold(grayImage, 200, 255, cv.THRESH_BINARY)
-		
-		cv.line(image,(X1,BY),(X1,TY),(0,0,255))
-		cv.line(image,(X2,BY),(X2,TY),(0,0,255))
-		
-                cv.line(image, lBL, lTL, (0,0,255))
-		cv.line(image, lBR, lTR, (0,0,255))
-		cv.line(image, rBL, rTL, (0,0,255))
-		cv.line(image, rBR, rTR, (0,0,255))
-		
                 cv.imwrite(BW_img_dump + str(time) + ".png", BWImage) ##debug
-                
-                #line slopes
-                slopeL1 = (float(lBL[1]-lTL[1])/float(lTL[0]-lBL[0]))
-                slopeL2 = (float(lBR[1]-lTR[1])/float(lTR[0]-lBR[0]))
-                slopeR1 = (float(rBL[1]-rTL[1])/float(rBL[0]-rTL[0]))
-                slopeR2 = (float(rBR[1]-rTR[1])/float(rBR[0]-rTR[0]))
-                
-                #Left
-                bBound = lBL[1]
-                tBound = lTR[1]
-                distToCornerL = 0
-                LRatio = 0
-                LDist = 0
-                lBound = lBL[0]
-                rBound = lBR[0]
-                lBoundFloat = float(lBound)
-                rBoundFloat = float(rBound)  
-                for y in range(bBound-1,tBound,-1):
-                        roadRatioL[y] = 0          
-                        for x in range(lBound, rBound):
-                                roadRatioL[y] += int(BWImage[y,x])/255
-                        LRatio = float(roadRatioL[y])/float(rBound - lBound)
-                        if LRatio < 0.001:
-                                distToCornerL = height-y
-                                break
-                        lBoundFloat += slopeL1
-                        rBoundFloat += slopeL2
-                        lBound = int(round(lBoundFloat))
-                        rBound = int(round(rBoundFloat))
-                #print("pixDistL: " + str(distToCornerL))
-                theta = float(bBound-distToCornerL-tBound+angleAdj)*dPixdTheta
-                print("LTheta: " +str(theta))
-                LDist = camHeight/(float(math.tan(theta)))
-                print("LDist: " + str(LDist))
-		print("NextDist: " + str(LDist-speed*dT))
-		#print("Prediction error: " + str(drive.nextDistL - LDist))
+		
+		#initialization
+		rightLineX = []
+		leftLineX = []
+		nextRightCorner = 0
+		nextLeftCorner = 0
+		for i in range(0, width):
+			rightLineX.append(width)
+			leftLineX.append(0)
+		#RIGHT
+		for y in range(LY, imageCentreY, -1):
+			findLine = False
+			rightLineX[y] = width
+			for x in range(imageCentreX, width):
+				pixR = int(BWImage[y,x])
+				if pixR == 255:
+					rightLineX[y] = x
+					findLine = True
+					break
+			if findLine == False:
+				rightLineX[y] = width
+				nextRightCorner = y
+				break
+				
+					
+		#LEFT
+		for y in range(LY, imageCentreY, -1):
+			findLine = False 
+			leftLineX[y] = 0
+			for x in range(imageCentreX, 0, -1):
+				pixL = int(BWImage[y,x])
+				if pixL == 255:
+					leftLineX[y] = x
+					findLine = True
+					break
+			if findLine == False:
+				leftLineX[y] = 0
+				nextLeftCorner = y
+				break
+
+		UpperAv = (rightLineX[UY] + leftLineX[UY])/2
+		LowerAv = (rightLineX[LY] + leftLineX[LY])/2
+		roadAngle = float(math.atan(float(UpperAv-LowerAv)/(LY-UY)))
+		driveAngle = float(math.atan(float(UpperAv-(LowerAv+imageCentreX)/2)/(LY-UY)))
+		print("Road Angle: " + str(roadAngle))
+		print("Drive Angle: " + str(driveAngle))
+		cornerAngleR = float(nextRightCorner-imageCentreY+angleAdj)*dPixdTheta
+		cornerAngleL = float(nextLeftCorner-imageCentreY+angleAdj)*dPixdTheta
+		print("Right Corner Angle: " + str(cornerAngleR))
+		print("Left Corner Angle: " + str(cornerAngleL))
+ 
+                RDist = camHeight/(float(math.tan(cornerAngleR)))
+                LDist = camHeight/(float(math.tan(cornerAngleL)))
+		print("Right Corner Distance: " + str(RDist))
+		print("Left Corner Distance: " + str(LDist))
+
+                drive.nextDistR = RDist - speed*dT
                 drive.nextDistL = LDist - speed*dT
-                
-                #Right
-                bBound = rBR[1]
-                tBound = rTL[1]
-                distToCornerR = 0
-                RRatio = 0
-                RDist = 0
-                lBound = rBL[0]
-                rBound = rBR[0]
-                lBoundFloat = float(lBound)
-                rBoundFloat = float(rBound) 
-                for y in range(bBound-1,tBound, -1):
-                        roadRatioR[y] = 0
-                        for x in range(lBound, rBound):
-                                roadRatioR[y] += int(BWImage[y,x])/255
-                        RRatio = float(roadRatioR[y])/float(rBound - lBound)
-                        if RRatio < 0.001:
-                                distToCornerR = height-y 
-                                break
-                        lBoundFloat -= slopeR1
-                        rBoundFloat -= slopeR2
-                        lBound = int(round(lBoundFloat))
-                        rBound = int(round(rBoundFloat))
-                theta = float(bBound-distToCornerR-tBound+angleAdj)*dPixdTheta
-                print("RTheta: " + str(theta))
-                RDist = camHeight/(float(math.tan(theta)))
-                print("RDist: " + str(RDist))
-		print("NextDist: " + str(RDist - speed*dT))
-		#print("Prediction error: " + str(drive.nextDistR - RDist))
-		drive.nextDistR = RDist - speed*dT
+		print("RDist Prediction: " + str(drive.nextDistR))
+		print("LDist Prediction: " + str(drive.nextDistL))
+		print("AngTolerance: " + str(AngTolerance))
 		
-		#Line Follow COM
-		XAv = 0
-		YAv = 0
-		roadX = 0
-		roadY = 0
-		numRoadPixels = 0
-		for i in range(TY, BY):
-			for j in range(X1, X2):
-				pix = BWImage[i, j]
-				if pix < 120:
-					roadX += j
-					roadY += i
-					numRoadPixels += 1
-		if numRoadPixels > 0:
-			XAv = (int)(roadX/numRoadPixels)
-			YAv = (int)(roadY/numRoadPixels)
-			cv.circle(image,(XAv, YAv), 5, (0,0,255), -1) ##debug
-		
+		cv.line(image,(UpperAv,UY),(LowerAv,LY),(0,0,255))
+    		cv.circle(image,(imageCentreX, LY), 3, (0,0,255), -1) ##debug
+    		cv.line(image,(UpperAv,UY),((LowerAv+imageCentreX)/2,LY),(0,0,255))
     		cv.imwrite(COM_img_dump + str(time) + ".png", image) ##debug
-    	        return XAv, YAv, LDist, RDist
+    	        return driveAngle, LDist, RDist
 
   	def callback(self,data):
     		currentTime = int(10*rospy.get_time())
@@ -191,18 +171,11 @@ class drive:
     		        drive.timeOfLastRead = currentTime
     			try:
         			cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-    				XAv, YAv, LDist, RDist = self.processImage(cv_image, currentTime)
+    				driveAngle, LDist, RDist = self.processImage(cv_image, currentTime)
     				timeL = float(LDist)/TDConvert
     				timeR = float(RDist)/TDConvert
 		  	    	move = Twist()
-		    		XCentre = width/2
-		    		XOffset = XAv-XCentre
-		    		YOffset = YAv-YCentre
-		    		#debug
-		    		#print("XOffset: " + str(XOffset))
-		    		#print("yOffset: " + str(YOffset))
-		    		#print("Tolerance: " + str(Tolerance))
-		    		print(drive.turnedRecently)
+				#LEFT CORNER
     				if drive.nextDistL < 0 and drive.turnedRecently == False:
 					print("Turning Left")
 					print("Driving Forwards " + str((creepTime+timeL)*speed/creepSpeed) + " seconds")
@@ -211,12 +184,13 @@ class drive:
 					rospy.sleep((creepTime+timeL)*speed/creepSpeed) #keep moving forward
 					print("Turning for " + str(turnTime) + " seconds")
 					move.linear.x = 0.0
-					move.angular.z = turnSpeed + 0.1
+					move.angular.z = turnSpeed + 0.5
 					rospy.sleep(0.2)
 					self.move_pub.publish(move)
 					rospy.sleep(turnTime)
 					move.angular.z = 0
 					drive.turnedRecently = True
+				#RIGHT CORNER
   	    			elif drive.nextDistR < 0 and drive.turnedRecently == False:
 					print("Turning Right")
 					print("Driving Forwards " + str((creepTime+timeR)*speed/creepSpeed) + " seconds")
@@ -231,16 +205,21 @@ class drive:
 					rospy.sleep(turnTime)
 					move.angular.z = 0
 					drive.turnedRecently = True
+				#STRAIGHTAWAY
        	 			else:
-					print("Goin' Straight")
-					print(XOffset)
-					if abs(XOffset) < Tolerance:
-					        move.linear.x = speed
-					        move.angular.z = -(XOffset)*P_straight
-					        drive.turnedRecently = False
-                                        else:
-					        move.angular.z = -(XOffset)*P_turn
-					        move.linear.x = 0
+					if abs(driveAngle) < AngTolerance:
+						print("Goin' Straight")
+						move.linear.x = speed
+						move.angular.z = -(driveAngle)*P_straight 
+						drive.turnedRecently = False
+						print("X vel: " + str(speed))
+						print("Angular vel: " + str(-driveAngle*P_straight)) 
+		                        else:
+						print("Stopped and Recentering...")
+						print("Angular vel: " + str(-driveAngle*P_turn))
+						move.angular.z = -(driveAngle)*P_turn
+						move.linear.x = 0
+				
 				self.move_pub.publish(move)
       			except CvBridgeError as e:
 	    			print(e)
