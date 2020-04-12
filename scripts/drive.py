@@ -41,36 +41,23 @@ dT = 1.25
 TDConvert = speed*dT*1.1
 turnTime = 1.7
 turnSpeed = 2.75
-creepTime = 2.1
-creepSpeed = 2
-P_straight = 0.25
-P_turn = 0.25
-Tolerance = 15
-AngTolerance = 0.1
+creepTime = 2.5
+creepSpeed = 2.1
+P_straight = 0.3
+P_turnX = 0.35
+P_turnAng = 0.3
+XTolerance = 0.1
+AngTolerance = 0.05
+scaleFactor = 0.001
 
 #ANGLES
 angleAdj = 25.0001
 dPixdTheta = 0.00685
 camHeight = 1
 
-#LEFT TRACK
-lBL = 0, height-30
-lBR = 135, height
-lTL = imageCentreX-5, imageCentreY
-lTR = imageCentreX+5, imageCentreY   
-  
-#RIGHT TRACK
-rBL = width-135, height
-rBR = width, height-30
-rTL = imageCentreX-5, imageCentreY
-rTR = imageCentreX+5, imageCentreY   
-
 #TRACKING
-LY = height-10
-UY = height-100
-LYTheta = float(imageCentreY+angleAdj-LY)*dPixdTheta
-UYTheta = float(imageCentreY+angleAdj-UY)*dPixdTheta
-deltaTheta = LYTheta-UYTheta
+LY = height-20
+UY = height-90
 
 class drive:
         nextDistL = 0
@@ -78,6 +65,8 @@ class drive:
 	timeSinceLastRead = 0
         timeOfLastRead = 0
         turnedRecently = False
+	Recentered = False
+	crosswalkDetect = False
 	def __init__(self):
 		print("drive_init")
                 #populate arrays
@@ -88,8 +77,6 @@ class drive:
 		self.bridge = CvBridge()
 		self.image_sub = rospy.Subscriber("/rrbot/camera1/image_raw", Image, self.callback)
         
-
-
 	def processImage(self, image, time):
 	        print("\n")
 	        print("Processing Image at time: " + str(time))
@@ -100,13 +87,14 @@ class drive:
 		#initialization
 		rightLineX = []
 		leftLineX = []
-		nextRightCorner = 0
-		nextLeftCorner = 0
+		nextRightCorner = UY
+		nextLeftCorner = UY
+		drive.crosswalkDetect = False
 		for i in range(0, width):
 			rightLineX.append(width)
 			leftLineX.append(0)
 		#RIGHT
-		for y in range(LY, imageCentreY, -1):
+		for y in range(LY, UY-1, -1):
 			findLine = False
 			rightLineX[y] = width
 			for x in range(imageCentreX, width):
@@ -115,14 +103,20 @@ class drive:
 					rightLineX[y] = x
 					findLine = True
 					break
+				RGBPix = image[y,x]
+				compare = RGBPix == (0,0,255)
+				if drive.crosswalkDetect == False and compare.all():
+					drive.crosswalkDetect = True 
+					print("Detected Crosswalk!")
 			if findLine == False:
 				rightLineX[y] = width
 				nextRightCorner = y
+				print("Found RCorner at y=" + str(nextRightCorner))
 				break
 				
 					
 		#LEFT
-		for y in range(LY, imageCentreY, -1):
+		for y in range(LY, UY-1, -1):
 			findLine = False 
 			leftLineX[y] = 0
 			for x in range(imageCentreX, 0, -1):
@@ -131,15 +125,23 @@ class drive:
 					leftLineX[y] = x
 					findLine = True
 					break
+				RGBPix = image[y,x]
+				compare = RGBPix == (0,0,255)
+				if drive.crosswalkDetect == False and compare.all():
+					drive.crosswalkDetect = True 
+					print("Detected Crosswalk!")
 			if findLine == False:
 				leftLineX[y] = 0
 				nextLeftCorner = y
+				print("Found LCorner at y=" + str(nextLeftCorner))
 				break
 
 		UpperAv = (rightLineX[UY] + leftLineX[UY])/2
 		LowerAv = (rightLineX[LY] + leftLineX[LY])/2
+		print("UpperAv: " + str(UpperAv))
+		print("LowerAv: " + str(LowerAv))
 		roadAngle = float(math.atan(float(UpperAv-LowerAv)/(LY-UY)))
-		driveAngle = float(math.atan(float(UpperAv-(LowerAv+imageCentreX)/2)/(LY-UY)))
+		driveAngle = float(math.atan(float(UpperAv-(LowerAv+imageCentreX)*0.5)/(LY-UY)))
 		print("Road Angle: " + str(roadAngle))
 		print("Drive Angle: " + str(driveAngle))
 		cornerAngleR = float(nextRightCorner-imageCentreY+angleAdj)*dPixdTheta
@@ -162,7 +164,8 @@ class drive:
     		cv.circle(image,(imageCentreX, LY), 3, (0,0,255), -1) ##debug
     		cv.line(image,(UpperAv,UY),((LowerAv+imageCentreX)/2,LY),(0,0,255))
     		cv.imwrite(COM_img_dump + str(time) + ".png", image) ##debug
-    	        return driveAngle, LDist, RDist
+    		XOffset = LowerAv - imageCentreX
+    	        return driveAngle, XOffset, LDist, RDist
 
   	def callback(self,data):
     		currentTime = int(10*rospy.get_time())
@@ -171,7 +174,18 @@ class drive:
     		        drive.timeOfLastRead = currentTime
     			try:
         			cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-    				driveAngle, LDist, RDist = self.processImage(cv_image, currentTime)
+    				driveAngle, XOffset, LDist, RDist = self.processImage(cv_image, currentTime)			
+    				Tolerance = 0
+    				if drive.crosswalkDetect == True:
+    					error = XOffset*scaleFactor
+    					Tolerance = XTolerance
+					P_turn = P_turnX
+    					
+    				else:
+    					error = driveAngle
+    					Tolerance = AngTolerance
+					P_turn = P_turnAng
+    					
     				timeL = float(LDist)/TDConvert
     				timeR = float(RDist)/TDConvert
 		  	    	move = Twist()
@@ -183,13 +197,14 @@ class drive:
 					self.move_pub.publish(move)
 					rospy.sleep((creepTime+timeL)*speed/creepSpeed) #keep moving forward
 					print("Turning for " + str(turnTime) + " seconds")
-					move.linear.x = 0.0
-					move.angular.z = turnSpeed + 0.5
+					move.linear.x = -0.005
+					move.angular.z = turnSpeed + 0.2
 					rospy.sleep(0.2)
 					self.move_pub.publish(move)
 					rospy.sleep(turnTime)
 					move.angular.z = 0
 					drive.turnedRecently = True
+					drive.Recentered = False
 				#RIGHT CORNER
   	    			elif drive.nextDistR < 0 and drive.turnedRecently == False:
 					print("Turning Right")
@@ -198,27 +213,29 @@ class drive:
 					self.move_pub.publish(move)
 					rospy.sleep((creepTime+timeR)*speed/creepSpeed) #keep moving forward
 					print("Turning for " + str(turnTime) + " seconds")
-					move.linear.x = 0.0
+					move.linear.x = -0.005
 					move.angular.z = -turnSpeed
 					rospy.sleep(0.2)
 					self.move_pub.publish(move)
 					rospy.sleep(turnTime)
 					move.angular.z = 0
 					drive.turnedRecently = True
+					drive.Recentered = False
 				#STRAIGHTAWAY
        	 			else:
-					if abs(driveAngle) < AngTolerance:
+					if abs(error) < Tolerance and drive.Recentered:
 						print("Goin' Straight")
 						move.linear.x = speed
-						move.angular.z = -(driveAngle)*P_straight 
+						move.angular.z = -(error)*P_straight 
 						drive.turnedRecently = False
 						print("X vel: " + str(speed))
-						print("Angular vel: " + str(-driveAngle*P_straight)) 
+						print("Angular vel: " + str(-error*P_straight)) 
 		                        else:
 						print("Stopped and Recentering...")
-						print("Angular vel: " + str(-driveAngle*P_turn))
-						move.angular.z = -(driveAngle)*P_turn
-						move.linear.x = 0
+						print("Angular vel: " + str(-error*P_turn))
+						move.angular.z = -(error)*P_turn
+						move.linear.x = -0.005
+						drive.Recentered = True
 				
 				self.move_pub.publish(move)
       			except CvBridgeError as e:
