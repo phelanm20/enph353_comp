@@ -1,11 +1,12 @@
 #! /usr/bin/env python
 
-#Drives the robot with PID
+#Drives the robot
 
 import sys
 import rospy
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Bool
 from cv_bridge import CvBridge, CvBridgeError
 import cv2 as cv
 import numpy as np
@@ -76,9 +77,10 @@ class drive:
                         roadRatioL.append(0.0)
                         roadRatioR.append(0.0)
 		self.move_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+		self.crosswalk_pub = rospy.Publisher('crosswalk', Bool, queue_size=1)
 		self.bridge = CvBridge()
 		self.image_sub = rospy.Subscriber("/rrbot/camera1/image_raw", Image, self.callback)
-        
+    
 	def processImage(self, image, time):
 	        print("\n")
 	        print("Processing Image at time: " + str(time))
@@ -167,6 +169,7 @@ class drive:
     		cv.line(image,(UpperAv,UY),((LowerAv+imageCentreX)/2,LY),(0,0,255))
     		cv.imwrite(COM_img_dump + str(time) + ".png", image) ##debug
     		XOffset = LowerAv - imageCentreX
+		
     	        return driveAngle, XOffset, LDist, RDist
 
   	def callback(self,data):
@@ -190,6 +193,8 @@ class drive:
     					
     				timeL = float(LDist)/TDConvert
     				timeR = float(RDist)/TDConvert
+    				cross = Bool()
+    				self.crosswalk_pub.publish(cross)
 		  	    	move = Twist()
 				#LEFT CORNER
     				if drive.nextDistL < 0 and drive.turnedRecently == False:
