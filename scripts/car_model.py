@@ -17,17 +17,16 @@ from keras import layers, models, optimizers, backend
 from keras.utils import plot_model, to_categorical
 from sklearn.metrics import confusion_matrix
 
-img_dir = "/home/fizzer/enph353_ws/src/competition/scripts/images/read_noread_training/"
+path = os.path.dirname(os.path.realpath(__file__)) + "/"
+img_dir = path + 'images/read_noread_training/'
 
 
 #Create list of environment images
 env_img_paths = [ join(img_dir, f) for f in listdir(img_dir) if isfile(join(img_dir, f)) ]
 pics = np.concatenate([ (cv.imread(path,0))[np.newaxis] for path in env_img_paths ]) #4D array
-print("SIZE:\t" + str(pics.shape))
-width = pics[0].shape[0]
-height = pics[0].shape[1]
-pics = pics.reshape(len(env_img_paths), width, height, 1) #ignore this error
-pics = np.swapaxes(pics, 0, 3)
+height = pics[0].shape[0]
+width = pics[0].shape[1]
+pics = pics.reshape(len(env_img_paths), height, width, 1)
 
 #Collect labels
 labels = np.empty(len(listdir(img_dir)))
@@ -36,10 +35,7 @@ for n in range(0, len(listdir(img_dir))):
 
 #Create X, Y datasets
 Y_dataset = to_categorical(labels, num_classes=None, dtype=object) #one hot encoded
-X_dataset = pics.T
-print("Here is Y and X sets!!!")
-print(Y_dataset.shape)
-print(X_dataset.shape)
+X_dataset = pics
 
 VALIDATION_SPLIT = 0.2 #to separate training set from test set
 def reset_weights(model):
@@ -48,8 +44,7 @@ def reset_weights(model):
     if hasattr(layer, 'kernel_initializer'):
       layer.kernel.initializer.run(session=session)
 conv_model = models.Sequential()
-conv_model.add(layers.Conv2D(3, (3, 3), activation='relu', strides = 6, input_shape = (height, width, 1))) #128, width height
-#If you decrease size of image will be faster
+conv_model.add(layers.Conv2D(32, (3, 3), activation='relu', strides = 4, input_shape = (height, width, 1)))
 conv_model.add(layers.MaxPooling2D((2, 2)))
 conv_model.add(layers.Flatten()) #string zig zag gets unrolled
 conv_model.add(layers.Dropout(0.5))
@@ -57,9 +52,12 @@ conv_model.add(layers.Dense(512, activation='relu'))
 conv_model.add(layers.Dense(2, activation='softmax')) ## of labels
 conv_model.summary()
 
+#Train the Model
 LEARNING_RATE = 1e-4
 conv_model.compile(loss='categorical_crossentropy', optimizer=optimizers.RMSprop(lr=LEARNING_RATE), metrics=['acc'])
 history_conv = conv_model.fit(X_dataset, Y_dataset, validation_split=VALIDATION_SPLIT, epochs=20, batch_size=16)
+
+#Plot results
 plt.plot(history_conv.history['loss'])
 plt.plot(history_conv.history['val_loss'])
 plt.title('model loss')
@@ -76,30 +74,14 @@ plt.legend(['train accuracy', 'val accuracy'], loc='upper left')
 plt.show()
 
 #Save Model
-conv_model.save('/home/fizzer/enph353_ws/src/competition/scripts/car_model.h5')
+conv_model.save(path + 'car_model.h5')
 
-#Display images in the training data set
-def displayImage(index):
-  img = cv.imread(env_img_paths[index], 0)
-  img = img.reshape(width, height, 1) #ignore this error
-  img = np.swapaxes(img, 0, 1)
-  img_aug = np.expand_dims(img, axis=0)
-  #Print timestamp
-  y_predict = conv_model.predict(img_aug)[0]
-  #Print timestamp and find delta
-  spot = int(np.where(y_predict == np.amax(y_predict))[0])
-
-  caption = ("The number of plates is.." + str(spot) + "\nAccuracy:" + str(np.amax(y_predict)))
-  plt.text(0.5, 0.5, caption, color='orange', fontsize = 16, horizontalalignment='left', verticalalignment='bottom')
-  plt.imshow(cv.imread(env_img_paths[index]))
-  plt.show()
-
+#Print incorrectly identified images
 for n in range(0, len(listdir(img_dir))):
   print(str(n))
   imgoop = cv.imread(env_img_paths[n], 0)
-  img = cv.imread(env_img_paths[n], 0)
-  img = img.reshape(width, height, 1) #ignore this error
-  img = np.swapaxes(img, 0, 1)
+  img = imgoop
+  img = img.reshape(height, width, 1)
   img_aug = np.expand_dims(img, axis=0)
   if labels[n] != 0:
     y_predict = conv_model.predict(img_aug)[0]

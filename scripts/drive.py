@@ -13,10 +13,12 @@ import math
 from std_msgs.msg import String
 import glob
 import time
+import os
 
-img_dump = "/home/fizzer/enph353_ws/src/competition/scripts/env_images/"
-BW_img_dump = "/home/fizzer/enph353_ws/src/competition/scripts/BW_images/"
-COM_img_dump = "/home/fizzer/enph353_ws/src/competition/scripts/COM_images/"
+path = os.path.dirname(os.path.realpath(__file__)) + "/"
+img_dump = path + 'env_images/'
+BW_img_dump = path + 'BW_images/'
+COM_img_dump = path + 'COM_images/'
 readRate = 20
 
 #IMAGE/MAPPING

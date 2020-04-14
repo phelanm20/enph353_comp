@@ -17,11 +17,11 @@
 		<arg name="spawn_pedestrians" value="$(arg spawn_pedestrians)"/>
 	</include>
 
-    <node pkg="competition_2019t2"
+    <!-- <node pkg="competition_2019t2"
          type="collectpics.py"
          name="collect_pictures" 
          output="screen">
-   </node>
+   </node> -->
 
    <node pkg="competition_2019t2"
          type="license_detect.py"
