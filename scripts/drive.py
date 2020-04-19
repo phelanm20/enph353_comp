@@ -44,6 +44,7 @@ dT = 1.25
 TDConvert = speed*dT*1.1
 turnTime = 1.7
 turnSpeed = 2.75
+turnAroundSpeed = 4.25
 creepTime = 2.5
 creepSpeed = 2.1
 P_straight = 0.3
@@ -70,6 +71,7 @@ class drive:
         turnedRecently = False
 	Recentered = False
 	crosswalkDetect = False
+	reachedTSection = False
 	def __init__(self):
 		print("drive_init")
                 #populate arrays
@@ -193,25 +195,22 @@ class drive:
     					
     				timeL = float(LDist)/TDConvert
     				timeR = float(RDist)/TDConvert
-    				cross = Bool()
+    				cross = drive.crosswalkDetect
     				self.crosswalk_pub.publish(cross)
 		  	    	move = Twist()
-				#LEFT CORNER
-    				if drive.nextDistL < 0 and drive.turnedRecently == False:
-					print("Turning Left")
-					print("Driving Forwards " + str((creepTime+timeL)*speed/creepSpeed) + " seconds")
-					move.linear.x = creepSpeed
-					self.move_pub.publish(move)
-					rospy.sleep((creepTime+timeL)*speed/creepSpeed) #keep moving forward
+				#T-SECTION
+				if drive.nextDistR < 0 and drive.nextDistL < 0 and drive.turnedRecently == False and drive.reachedTSection == False:
+					print("Tunring Around")
 					print("Turning for " + str(turnTime) + " seconds")
 					move.linear.x = -0.005
-					move.angular.z = turnSpeed + 0.2
+					move.angular.z = -turnAroundSpeed
 					rospy.sleep(0.2)
 					self.move_pub.publish(move)
 					rospy.sleep(turnTime)
 					move.angular.z = 0
 					drive.turnedRecently = True
 					drive.Recentered = False
+					drive.reachedTSection = True
 				#RIGHT CORNER
   	    			elif drive.nextDistR < 0 and drive.turnedRecently == False:
 					print("Turning Right")
@@ -222,6 +221,22 @@ class drive:
 					print("Turning for " + str(turnTime) + " seconds")
 					move.linear.x = -0.005
 					move.angular.z = -turnSpeed
+					rospy.sleep(0.2)
+					self.move_pub.publish(move)
+					rospy.sleep(turnTime)
+					move.angular.z = 0
+					drive.turnedRecently = True
+					drive.Recentered = False
+				#LEFT CORNER
+    				elif drive.nextDistL < 0 and drive.turnedRecently == False:
+					print("Turning Left")
+					print("Driving Forwards " + str((creepTime+timeL)*speed/creepSpeed) + " seconds")
+					move.linear.x = creepSpeed
+					self.move_pub.publish(move)
+					rospy.sleep((creepTime+timeL)*speed/creepSpeed) #keep moving forward
+					print("Turning for " + str(turnTime) + " seconds")
+					move.linear.x = -0.005
+					move.angular.z = turnSpeed + 0.2
 					rospy.sleep(0.2)
 					self.move_pub.publish(move)
 					rospy.sleep(turnTime)
