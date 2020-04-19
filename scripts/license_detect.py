@@ -3,6 +3,7 @@
 import sys
 import rospy
 from sensor_msgs.msg import Image
+from std_msgs.msg import Bool
 import numpy as np
 import tensorflow as tf
 from keras import layers, models, optimizers, backend
@@ -13,7 +14,8 @@ import os
 
 path = os.path.dirname(os.path.realpath(__file__)) + "/"
 plate_model_dir = path + 'plate_model.h5'
-car_model_dir = 'home/maria/enph353_ws/src/car_model.h5'
+car_model_dir = '/home/maria/enph353_ws/src/car_model.h5'
+person_model_dir = '/home/maria/enph353_ws/src/person_model.h5'
 dump_dir = path + 'images/fresh_images/'
 
 class plate_reader:
@@ -24,16 +26,47 @@ class plate_reader:
     self.graph = tf.get_default_graph()
     backend.set_session(self.sess)
     self.car_model = models.load_model(car_model_dir)
+    self.person_model = models.load_model(person_model_dir)
+
+    #Initialize Variables
     self.counter = 0
+    self.plateDict = {}
+    self.keyList = []
+    self.startTime = int(time.time())
+    self.isCrosswalk = 0
     
-    #Load Image
+    #Subscribe to the robot's camera, crosswalk boolean
     self.bridge = CvBridge()
+    self.pedestrian_pub = rospy.Publisher('pedestrian', Bool, queue_size=1)
     self.image_sub = rospy.Subscriber("/rrbot/camera1/image_raw", Image, self.picCallback)
+    self.crosswalk_sub = rospy.Subscriber('crosswalk', Bool, self.crosswalkCheck)
 
   #Read camera image, and display license plate text if detected
   def picCallback(self, image_sub):
+    #IF TIME IS UP
+    if int(time.time()) - self.startTime > 230 :
+      print("FOUR MINUTES" + "\n\nPLATES READ:\n")
+      sorted(self.keyList)
+      
+      for key in self.keyList :
+        print("P" + str(key) + "\t" + str(self.plateDict[key]))
+
+      while True:
+        pass
+
     self.counter += 1
 
+    #IF CROSSWALK, Check for pedestrian
+    if self.isCrosswalk :
+      try:
+          feed_img = self.bridge.imgmsg_to_cv2(image_sub, "mono8")
+      except CvBridgeError as e:
+          print(e)
+
+      self.pedestrian_pub.publish(self.isPedestrian(feed_img))
+      self.isCrosswalk = 0
+
+    #Every SIXTH IMAGE check for a plate, and read if present    
     if self.counter % 6 == 0 :
       try:
           feed_img = self.bridge.imgmsg_to_cv2(image_sub, "mono8")
@@ -42,13 +75,39 @@ class plate_reader:
 
       if self.isPlate(feed_img) :
         realPlates = self.chop(feed_img)
-        print("\nPlates found: " + str(len(realPlates)))
 
-        if len(realPlates) == 0 :
-          print("\tFALSE DETECTION")
-        else :
-          for realPlate in realPlates :
-            self.show_plate_val(realPlate)
+        #Add the plates read to the plate dictionary
+        if len(realPlates) == 2 :
+          newKey = self.get_plate_val(1, realPlates[0])
+          newVal = self.get_plate_val(2, realPlates[1])
+
+          for char in "0123456789" :
+            if char in newVal[:2] :
+              return
+          if newKey in self.plateDict:
+            if 'B' in self.plateDict[newKey] and 'B'  not in newVal :
+              self.plateDict[newKey] = newVal
+            if 'U' in self.plateDict[newKey] and 'U'  not in newVal and 'L' in newVal :
+              self.plateDict[newKey] = newVal
+          else :
+            self.plateDict[newKey] = newVal
+            self.keyList.append(newKey)
+
+  #Callback if crosswalk is flagged
+  def crosswalkCheck(self, Bool) :
+    self.isCrosswalk = Bool
+    if self.isCrosswalk :
+      print("CROSSWALK DETECTED!")
+
+  #Takes feed image, returns true if a pedestrian is on crosswalk
+  def isPedestrian(self, img) :
+    img = img.reshape(img.shape[0], img.shape[1], 1)
+    img_aug = np.expand_dims(img, axis=0)
+    with self.graph.as_default():
+      backend.set_session(self.sess)
+      y_predict = self.person_model.predict(img_aug)[0]
+    isPerson = int(np.where(y_predict == np.amax(y_predict))[0])
+    return isPerson
 
   #Takes feed image, returns true if readable license plate in image
   def isPlate(self, img):
@@ -73,7 +132,6 @@ class plate_reader:
       if len(approx) == 4 and cv.contourArea(contour) > 2000: #if certain sized rectangle #MORE IF STATEMENTS HERE!!!!!!
           x, y, w, h = cv.boundingRect(contour)
           plate = img[y:(y+h), x:(x+w)]
-          cv.imwrite(dump_dir + str(y) + '.png', plate)
           platesSeen.append(plate)
 
     if len(platesSeen) > 1 :     
@@ -82,9 +140,7 @@ class plate_reader:
     return platesSeen
 
   #Takes image of license plate, reads it, displays text
-  def show_plate_val(self, plate):
-    print("\tReading a plate")
-
+  def get_plate_val(self, num, plate):
     characters = ""
 
     #Load Model
@@ -131,33 +187,51 @@ class plate_reader:
           characters += name
 
     numchar = len(characters)  
-    print("\t\tcharacters found:" + characters)
-    if numchar == 2 or numchar == 3:
+    #print("\t\tcharacters found:" + characters)
+
+    if num == 1 :
       if 'B' in characters or 'I' in characters or 'S' in characters or 'Z' in characters:
         characters = characters.replace('B', '8')
         characters = characters.replace('I', '1')
         characters = characters.replace('S', '5')  
         characters = characters.replace('Z', '2')
-    elif numchar == 4:
-      correctChar = characters
-      correctNum = characters
-      if 'B' in characters[2:] or 'I' in characters[2:] or 'S' in characters[2:] or 'Z' in characters[2:]: 
-        characters = characters.replace('B', '8')
-        characters = characters.replace('I', '1')
-        characters = characters.replace('S', '5')
-        characters = characters.replace('Z', '2')
-        correctNum = characters
-      if '8' in characters[:2] or '1' in characters[:2] or '5' in characters[:2] or '2' in characters[:2]: 
-        characters = characters.replace('8', 'B')
-        characters = characters.replace('1', 'I')
-        characters = characters.replace('5', 'S')
-        characters = characters.replace('2', 'Z')
-        correctChar = characters
-      characters = correctChar[:2] + correctNum[2:]
-    else : 
-      print("\tFALSE DETECTION")
+      
+      characters = characters[1:]
 
-    print("\t\tPlate read as:\t" + characters) 
+      print("plate read as: " + characters)
+      cv.imwrite(dump_dir + characters + ".png", plate)
+      return characters
+
+    if num == 2 :
+      if numchar == 6 :
+        characters = characters[1:]
+        numchar = numchar - 1
+
+      if numchar == 5 :
+        characters = characters[0] + characters[2:]
+        numchar = numchar - 1
+
+      if numchar == 4 :
+        correctChar = characters
+        correctNum = characters
+        if 'B' in characters[2:] or 'I' in characters[2:] or 'S' in characters[2:] or 'Z' in characters[2:]: 
+          characters = characters.replace('B', '8')
+          characters = characters.replace('I', '1')
+          characters = characters.replace('S', '5')
+          characters = characters.replace('Z', '2')
+          correctNum = characters
+        if '8' in characters[:2] or '1' in characters[:2] or '5' in characters[:2] or '2' in characters[:2] or '9' in characters[:2]: 
+          characters = characters.replace('8', 'B')
+          characters = characters.replace('1', 'I')
+          characters = characters.replace('5', 'S')
+          characters = characters.replace('2', 'Z')
+          characters = characters.replace('9', 'Q')
+          correctChar = characters
+        characters = correctChar[:2] + correctNum[2:]
+
+    print("plate read as: " + characters)
+    cv.imwrite(dump_dir + characters + ".png", plate)
+    return characters
 
 
 def main(args):

@@ -238,7 +238,7 @@ class drive:
 						print("X vel: " + str(speed))
 						print("Angular vel: " + str(-error*P_straight)) 
 		                        else:
-						print("Stopped and Recentering...")
+						print("Stopped and Recentering...")			 
 						print("Angular vel: " + str(-error*P_turn))
 						move.angular.z = -(error)*P_turn
 						move.linear.x = -0.005

@@ -22,13 +22,21 @@
          name="collect_pictures" 
          output="screen">
    </node> -->
-<?ignore
+
+<!-- <?ignore
    <node pkg="competition_2019t2"
          type="license_detect.py"
          name="license_plate_detector" 
          output="screen">
    </node>
-?>
+?> -->
+
+    <node pkg="competition_2019t2"
+         type="license_detect.py"
+         name="license_plate_detector" 
+         output="screen">
+   </node>
+
    <node pkg="competition_2019t2"
          type="drive.py"
          name="drive" 
