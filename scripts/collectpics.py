@@ -8,9 +8,13 @@ import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
+import os
 
-readRate = 20
-img_dump = "/home/fizzer/enph353_ws/src/competition/scripts/images/fresh_plate_images/"
+readRate = 5
+
+
+path = os.path.dirname(os.path.realpath(__file__)) + "/"
+img_dump = path + "images/fresh_images/"
 
 class image_writer:
 	
@@ -22,17 +26,16 @@ class image_writer:
     self.image_sub = rospy.Subscriber("/rrbot/camera1/image_raw", Image, self.callback)
 
   def callback(self,data):
-    time = int(10*rospy.get_time())
+    time = int(rospy.get_time())
     image_writer.timeSinceLastRead = time - image_writer.timeOfLastRead
-    if time%readRate == 0 or image_writer.timeSinceLastRead > readRate:
-	image_writer.timeOfLastRead = time
-	print("Collected image at time: " + str(time))
-        try:
-            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        except CvBridgeError as e:
-            print(e)
-
-        cv2.imwrite(img_dump + str(time) + ".png", cv_image)
+    if time > 20 and (time%readRate == 0 or image_writer.timeSinceLastRead > readRate) :
+      image_writer.timeOfLastRead = time
+      print("Collected image at time: " + str(time))
+      try:
+          cv_image = self.bridge.imgmsg_to_cv2(data, "mono8")
+      except CvBridgeError as e:
+          print(e)
+      cv2.imwrite(img_dump + str(time) + ".png", cv_image)
 
 def main(args):
   ic = image_writer()
