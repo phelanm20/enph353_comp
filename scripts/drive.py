@@ -16,6 +16,8 @@ import glob
 import time
 import os
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 path = os.path.dirname(os.path.realpath(__file__)) + "/"
 BW_img_dump = path + 'BW_images/'
 COM_img_dump = path + 'COM_images/'
@@ -73,11 +75,11 @@ class drive:
 		crosswalkDetect = False
     
 	def processImage(self, image, time):
-	        print("\n")
-	        print("Processing Image at time: " + str(time))
+	        #print("\n")
+	        #print("Processing Image at time: " + str(time))
 		grayImage = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
                 (thresh, BWImage) = cv.threshold(grayImage, 200, 255, cv.THRESH_BINARY)
-                cv.imwrite(BW_img_dump + str(time) + ".png", BWImage) ##debug
+                #cv.imwrite(BW_img_dump + str(time) + ".png", BWImage) ##debug
 		
 		#initialization
 		self.pedAlert = False
@@ -103,11 +105,11 @@ class drive:
 				compare = RGBPix == (0,0,255)
 				if self.crosswalkDetect == False and compare.all():
 					self.crosswalkDetect = True 
-					print("Detected Crosswalk!")
+					#print("Detected Crosswalk!")
 			if findLine == False:
 				rightLineX[y] = width
 				nextRightCorner = y
-				print("Found RCorner at y=" + str(nextRightCorner))
+				#print("Found RCorner at y=" + str(nextRightCorner))
 				break
 				
 					
@@ -129,7 +131,7 @@ class drive:
 			if findLine == False:
 				leftLineX[y] = 0
 				nextLeftCorner = y
-				print("Found LCorner at y=" + str(nextLeftCorner))
+				#print("Found LCorner at y=" + str(nextLeftCorner))
 				break
 
 		UpperAv = (rightLineX[UY] + leftLineX[UY])/2
@@ -160,7 +162,7 @@ class drive:
 		cv.line(image,(UpperAv,UY),(LowerAv,LY),(0,0,255))
     		cv.circle(image,(imageCentreX, LY), 3, (0,0,255), -1) ##debug
     		cv.line(image,(UpperAv,UY),((LowerAv+imageCentreX)/2,LY),(0,0,255))
-    		cv.imwrite(COM_img_dump + str(time) + ".png", image) ##debug
+    		#cv.imwrite(COM_img_dump + str(time) + ".png", image) ##debug
     		XOffset = LowerAv - imageCentreX
 		
     	        return driveAngle, XOffset, LDist, RDist
@@ -207,12 +209,12 @@ class drive:
 					self.reachedTSection = True
 				#RIGHT CORNER
   	    			elif self.nextDistR < 0 and self.turnedRecently == False:
-					print("Turning Right")
-					print("Driving Forwards " + str((creepTime+timeR)*speed/creepSpeed) + " seconds")
+					#print("Turning Right")
+					#print("Driving Forwards " + str((creepTime+timeR)*speed/creepSpeed) + " seconds")
 					move.linear.x = creepSpeed
 					self.move_pub.publish(move)
 					rospy.sleep((creepTime+timeR)*speed/creepSpeed) #keep moving forward
-					print("Turning for " + str(turnTime) + " seconds")
+					#print("Turning for " + str(turnTime) + " seconds")
 					move.linear.x = -0.005
 					move.angular.z = -turnSpeed
 					rospy.sleep(0.2)
@@ -223,12 +225,12 @@ class drive:
 					self.Recentered = False
 				#LEFT CORNER
     				elif self.nextDistL < 0 and self.turnedRecently == False:
-					print("Turning Left")
-					print("Driving Forwards " + str((creepTime+timeL)*speed/creepSpeed) + " seconds")
+					#print("Turning Left")
+					#print("Driving Forwards " + str((creepTime+timeL)*speed/creepSpeed) + " seconds")
 					move.linear.x = creepSpeed
 					self.move_pub.publish(move)
 					rospy.sleep((creepTime+timeL)*speed/creepSpeed) #keep moving forward
-					print("Turning for " + str(turnTime) + " seconds")
+					#print("Turning for " + str(turnTime) + " seconds")
 					move.linear.x = -0.005
 					move.angular.z = turnSpeed + 0.2
 					rospy.sleep(0.2)
@@ -240,8 +242,8 @@ class drive:
 				#STRAIGHTAWAY
        	 			else:
 					if abs(error) < Tolerance and self.Recentered == True:
-						print("Goin' Straight")
-						print("Ped Alert: " + str(self.pedAlert))
+						#print("Goin' Straight")
+						#print("Ped Alert: " + str(self.pedAlert))
 						if self.pedAlert == False:
 							move.linear.x = speed
 							move.angular.z = -(error)*P_straight 
@@ -249,10 +251,10 @@ class drive:
 							move.linear.x = 0
 							move.angular.z = 0
 						self.turnedRecently = False
-						print("X vel: " + str(speed))
+						#print("X vel: " + str(speed))
 						#print("Angular vel: " + str(-error*P_straight)) 
 		                        else:
-						print("Stopped and Recentering...")			 
+						#print("Stopped and Recentering...")			 
 						#print("Angular vel: " + str(-error*P_turn))
 						move.angular.z = -(error)*P_turn
 						move.linear.x = -0.005
