@@ -16,6 +16,7 @@ import pandas as pd
 from keras import layers, models, optimizers, backend
 from keras.utils import plot_model, to_categorical
 from sklearn.metrics import confusion_matrix
+import os
 
 path = os.path.dirname(os.path.realpath(__file__)) + "/"
 img_dir = path + 'images/read_noread_training/'
@@ -74,30 +75,30 @@ plt.legend(['train accuracy', 'val accuracy'], loc='upper left')
 plt.show()
 
 #Save Model
-conv_model.save(path + 'car_model.h5')
+#conv_model.save(path + 'car_model.h5')
 
-#Print incorrectly identified images
-for n in range(0, len(listdir(img_dir))):
-  print(str(n))
-  imgoop = cv.imread(env_img_paths[n], 0)
-  img = imgoop
-  img = img.reshape(height, width, 1)
-  img_aug = np.expand_dims(img, axis=0)
-  if labels[n] != 0:
-    y_predict = conv_model.predict(img_aug)[0]
-    spot = int(np.where(y_predict == np.amax(y_predict))[0])
-    if spot != labels[n] :
-      cv.imshow("Labeled: " + str(labels[n]) + "\tPredicted: " + str(spot), imgoop)
-      cv.waitKey(0)
+# #Print incorrectly identified images
+# for n in range(0, len(listdir(img_dir))):
+#   print(str(n))
+#   imgoop = cv.imread(env_img_paths[n], 0)
+#   img = imgoop
+#   img = img.reshape(height, width, 1)
+#   img_aug = np.expand_dims(img, axis=0)
+#   if labels[n] != 0:
+#     y_predict = conv_model.predict(img_aug)[0]
+#     spot = int(np.where(y_predict == np.amax(y_predict))[0])
+#     if spot != labels[n] :
+#       cv.imshow("Labeled: " + str(labels[n]) + "\tPredicted: " + str(spot), imgoop)
+#       cv.waitKey(0)
 
-#Generate Confusion Matrix
-labels = "01"
-NUM_IMAGES = 60
-y_pred_raw = conv_model.predict(X_dataset[0:NUM_IMAGES]) #one-hot encoded
-y_pred = [np.argmax(y_val) for y_val in y_pred_raw]
-y_gnd  = [np.argmax(y_val) for y_val in Y_dataset[0:NUM_IMAGES]]
-cm = confusion_matrix(y_gnd, y_pred)
-df_cm = pd.DataFrame(cm, index = [i for i in labels], columns = [i for i in labels])
-plt.figure(figsize = (10,7))
-sn.heatmap(df_cm, annot=True, annot_kws={"size": 10})
-plt.show()
+# #Generate Confusion Matrix
+# labels = "01"
+# NUM_IMAGES = 60
+# y_pred_raw = conv_model.predict(X_dataset[0:NUM_IMAGES]) #one-hot encoded
+# y_pred = [np.argmax(y_val) for y_val in y_pred_raw]
+# y_gnd  = [np.argmax(y_val) for y_val in Y_dataset[0:NUM_IMAGES]]
+# cm = confusion_matrix(y_gnd, y_pred)
+# df_cm = pd.DataFrame(cm, index = [i for i in labels], columns = [i for i in labels])
+# plt.figure(figsize = (10,7))
+# sn.heatmap(df_cm, annot=True, annot_kws={"size": 10})
+# plt.show()

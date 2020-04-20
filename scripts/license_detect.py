@@ -135,7 +135,7 @@ class plate_reader:
           x, y, w, h = cv.boundingRect(contour)
           plate = img[y:(y+h), x:(x+w)]
           platesSeen.append(plate)
-          cv.imwrite(dump_dir + "plate" + ".png", plate)
+          cv.imwrite(dump_dir + str(y) + str(x) + ".png", plate)
 
     if len(platesSeen) > 1 :     
       platesSeen[0], platesSeen[1] = platesSeen[1], platesSeen[0]
@@ -164,9 +164,9 @@ class plate_reader:
     for i, ctr in enumerate(sorted_ctrs):
       x, y, w, h = cv.boundingRect(ctr)
       area = w*h
-      # cv.circle(thresh, (x, y), 4, 0)
-      # cv.imshow("contour " + str(i) + " bounding rect, showing top left", thresh)
-      # cv.waitKey(0)
+      cv.circle(thresh, (x, y), 4, 0)
+      cv.imshow("contour " + str(i) + " bounding rect, showing top left", thresh)
+      cv.waitKey(0)
 
       if area < 1500 and area > 200:
         charThresh = thresh[y:y + h, x:x + w] #Isolate each character
@@ -175,8 +175,8 @@ class plate_reader:
         dim = (14, 20)
         char = cv.resize(charThresh, dim, interpolation = cv.INTER_AREA)
         char = char.reshape(20, 14, 1)
-        # cv.imshow("aafter reshaping", char)
-        # cv.waitKey(0)
+        cv.imshow("aafter reshaping", char)
+        cv.waitKey(0)
         img_aug = np.expand_dims(char, axis=0)
         with graph.as_default():
           backend.set_session(sess)
@@ -240,14 +240,16 @@ class plate_reader:
 def main(args):
   reader = plate_reader()
   #Debug plate mode
-  # imgimg = cv.imread(dump_dir + '340.png', 0)
-  # reader.show_plate_val(imgimg)
+  imgimg = cv.imread(path + 'images/read_noread_training/' + '30l;ksj_1.png', 0)
+  realPlates = reader.chop(imgimg)
+  reader.get_plate_val(1, realPlates[0])
+  reader.get_plate_val(2, realPlates[1])
   #Run Sim Mode
-  rospy.init_node('plate_reader', anonymous=True)
-  try:
-    rospy.spin()
-  except KeyboardInterrupt:
-    print("Shutting down")
+  # rospy.init_node('plate_reader', anonymous=True)
+  # try:
+  #   rospy.spin()
+  # except KeyboardInterrupt:
+  #   print("Shutting down")
   cv.destroyAllWindows()   
 
 if __name__ == '__main__':
