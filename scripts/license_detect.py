@@ -123,7 +123,9 @@ class plate_reader:
   #If not, returns false, original environment image
   def chop(self, img):
     img = cv.bilateralFilter(img, 11, 17, 17) #high contrast image
+    cv.imwrite(dump_dir + "threshold" + ".png", img)
     edges = cv.Canny(img, 200, 200)
+    cv.imwrite(dump_dir + "edges" + ".png", edges)
     _, contours, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) #find contours
 
     platesSeen = []
@@ -133,6 +135,7 @@ class plate_reader:
           x, y, w, h = cv.boundingRect(contour)
           plate = img[y:(y+h), x:(x+w)]
           platesSeen.append(plate)
+          cv.imwrite(dump_dir + "plate" + ".png", plate)
 
     if len(platesSeen) > 1 :     
       platesSeen[0], platesSeen[1] = platesSeen[1], platesSeen[0]
