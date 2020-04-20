@@ -30,7 +30,7 @@ class plate_reader:
         self.counter = 0
         self.startTime = int(time.time())
         self.isCrosswalk = 0
-	    
+
         #Subscribe to the robot's camera, crosswalk boolean
         self.bridge = CvBridge()
         self.pedestrian_pub = rospy.Publisher('pedestrian', Bool, queue_size=1)
@@ -51,6 +51,20 @@ class plate_reader:
             self.pedestrian_pub.publish(self.isPedestrian(feed_img))
             self.isCrosswalk = 0
 
+  #Read camera image, and display license plate text if detected
+  def picCallback(self, image_sub):
+        self.counter += 1
+
+        #IF CROSSWALK, Check for pedestrian
+        if self.isCrosswalk :
+        try:
+            feed_img = self.bridge.imgmsg_to_cv2(image_sub, "mono8")
+        except CvBridgeError as e:
+            print(e)
+
+        self.pedestrian_pub.publish(self.isPedestrian(feed_img))
+        self.isCrosswalk = 0
+
     #Callback if crosswalk is flagged
     def crosswalkCheck(self, crosswalk_sub) :
         self.isCrosswalk = crosswalk_sub
@@ -64,6 +78,15 @@ class plate_reader:
             y_predict = self.person_model.predict(img_aug)[0]
         isPerson = int(np.where(y_predict == np.amax(y_predict))[0])
         print("isPerson: " + str(isPerson))
+
+  #Takes feed image, returns true if a pedestrian is on crosswalk
+  def isPedestrian(self, img) :
+        img = img.reshape(img.shape[0], img.shape[1], 1)
+        img_aug = np.expand_dims(img, axis=0)
+        with self.graph.as_default():
+        backend.set_session(self.sess)
+        y_predict = self.person_model.predict(img_aug)[0]
+        isPerson = int(np.where(y_predict == np.amax(y_predict))[0])
         return isPerson
 
 def main(args):

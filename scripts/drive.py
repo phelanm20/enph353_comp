@@ -17,7 +17,6 @@ import time
 import os
 
 path = os.path.dirname(os.path.realpath(__file__)) + "/"
-img_dump = path + 'env_images/'
 BW_img_dump = path + 'BW_images/'
 COM_img_dump = path + 'COM_images/'
 readRate = 20
@@ -27,16 +26,6 @@ width = 640
 height = 480
 imageCentreY = height/2
 imageCentreX = width/2
-TY = 455
-BY = 480
-X1 = 100
-X2 = width-X1
-YCentre = (TY + BY)/2
-XCentre = 320
-roadRatioL = []
-roadRatioR = []
-bBound = height 
-tBound = height/2
 
 #MOTION/CORNERING
 speed = 0.25
@@ -48,8 +37,8 @@ turnAroundSpeed = 4.25
 creepTime = 2.5
 creepSpeed = 2.1
 P_straight = 0.3
-P_turnX = 0.35
-P_turnAng = 0.3
+P_turnX = 0.5
+P_turnAng = 0.35
 XTolerance = 0.1
 AngTolerance = 0.05
 scaleFactor = 0.001
@@ -70,18 +59,18 @@ class drive:
         timeOfLastRead = 0
         turnedRecently = False
 	Recentered = False
-	crosswalkDetect = False
+	crosswalkDetect = Bool()
 	reachedTSection = False
+	pedAlert = False
 	def __init__(self):
 		print("drive_init")
                 #populate arrays
-                for y in range(0, bBound):      
-                        roadRatioL.append(0.0)
-                        roadRatioR.append(0.0)
 		self.move_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
 		self.crosswalk_pub = rospy.Publisher('crosswalk', Bool, queue_size=1)
 		self.bridge = CvBridge()
 		self.image_sub = rospy.Subscriber("/rrbot/camera1/image_raw", Image, self.callback)
+		self.pedestrian_sub = rospy.Subscriber('pedestrian', Bool, queue_size=1)
+		crosswalkDetect = False
     
 	def processImage(self, image, time):
 	        print("\n")
@@ -91,11 +80,12 @@ class drive:
                 cv.imwrite(BW_img_dump + str(time) + ".png", BWImage) ##debug
 		
 		#initialization
+		self.pedAlert = False
 		rightLineX = []
 		leftLineX = []
 		nextRightCorner = UY
 		nextLeftCorner = UY
-		drive.crosswalkDetect = False
+		self.crosswalkDetect = False
 		for i in range(0, width):
 			rightLineX.append(width)
 			leftLineX.append(0)
@@ -111,8 +101,8 @@ class drive:
 					break
 				RGBPix = image[y,x]
 				compare = RGBPix == (0,0,255)
-				if drive.crosswalkDetect == False and compare.all():
-					drive.crosswalkDetect = True 
+				if self.crosswalkDetect == False and compare.all():
+					self.crosswalkDetect = True 
 					print("Detected Crosswalk!")
 			if findLine == False:
 				rightLineX[y] = width
@@ -133,8 +123,8 @@ class drive:
 					break
 				RGBPix = image[y,x]
 				compare = RGBPix == (0,0,255)
-				if drive.crosswalkDetect == False and compare.all():
-					drive.crosswalkDetect = True 
+				if self.crosswalkDetect == False and compare.all():
+					self.crosswalkDetect = True 
 					print("Detected Crosswalk!")
 			if findLine == False:
 				leftLineX[y] = 0
@@ -144,28 +134,29 @@ class drive:
 
 		UpperAv = (rightLineX[UY] + leftLineX[UY])/2
 		LowerAv = (rightLineX[LY] + leftLineX[LY])/2
-		print("UpperAv: " + str(UpperAv))
-		print("LowerAv: " + str(LowerAv))
+		#print("UpperAv: " + str(UpperAv))
+		#print("LowerAv: " + str(LowerAv))
 		roadAngle = float(math.atan(float(UpperAv-LowerAv)/(LY-UY)))
 		driveAngle = float(math.atan(float(UpperAv-(LowerAv+imageCentreX)*0.5)/(LY-UY)))
-		print("Road Angle: " + str(roadAngle))
-		print("Drive Angle: " + str(driveAngle))
+		#print("Road Angle: " + str(roadAngle))
+		#print("Drive Angle: " + str(driveAngle))
 		cornerAngleR = float(nextRightCorner-imageCentreY+angleAdj)*dPixdTheta
 		cornerAngleL = float(nextLeftCorner-imageCentreY+angleAdj)*dPixdTheta
-		print("Right Corner Angle: " + str(cornerAngleR))
-		print("Left Corner Angle: " + str(cornerAngleL))
+		#print("Right Corner Angle: " + str(cornerAngleR))
+		#print("Left Corner Angle: " + str(cornerAngleL))
  
                 RDist = camHeight/(float(math.tan(cornerAngleR)))
                 LDist = camHeight/(float(math.tan(cornerAngleL)))
-		print("Right Corner Distance: " + str(RDist))
-		print("Left Corner Distance: " + str(LDist))
+		#print("Right Corner Distance: " + str(RDist))
+		#print("Left Corner Distance: " + str(LDist))
 
-                drive.nextDistR = RDist - speed*dT
-                drive.nextDistL = LDist - speed*dT
-		print("RDist Prediction: " + str(drive.nextDistR))
-		print("LDist Prediction: " + str(drive.nextDistL))
-		print("AngTolerance: " + str(AngTolerance))
+                self.nextDistR = RDist - speed*dT
+                self.nextDistL = LDist - speed*dT
+		#print("RDist Prediction: " + str(self.nextDistR))
+		#print("LDist Prediction: " + str(self.nextDistL))
+		#print("AngTolerance: " + str(AngTolerance))
 		
+			
 		cv.line(image,(UpperAv,UY),(LowerAv,LY),(0,0,255))
     		cv.circle(image,(imageCentreX, LY), 3, (0,0,255), -1) ##debug
     		cv.line(image,(UpperAv,UY),((LowerAv+imageCentreX)/2,LY),(0,0,255))
@@ -176,14 +167,14 @@ class drive:
 
   	def callback(self,data):
     		currentTime = int(10*rospy.get_time())
-                drive.timeSinceLastRead = currentTime - drive.timeOfLastRead
-    		if currentTime%readRate == 0 or drive.timeSinceLastRead > readRate:
+                self.timeSinceLastRead = currentTime - self.timeOfLastRead
+    		if currentTime%readRate == 0 or self.timeSinceLastRead > readRate:
     		        drive.timeOfLastRead = currentTime
     			try:
         			cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
     				driveAngle, XOffset, LDist, RDist = self.processImage(cv_image, currentTime)			
     				Tolerance = 0
-    				if drive.crosswalkDetect == True:
+    				if self.crosswalkDetect == True:
     					error = XOffset*scaleFactor
     					Tolerance = XTolerance
 					P_turn = P_turnX
@@ -195,11 +186,14 @@ class drive:
     					
     				timeL = float(LDist)/TDConvert
     				timeR = float(RDist)/TDConvert
-    				cross = drive.crosswalkDetect
-    				self.crosswalk_pub.publish(cross)
+    				self.crosswalk_pub.publish(self.crosswalkDetect)
+    				
+				if self.pedestrian_sub == True:
+					print("Pedestrian Alert!")
+					self.pedAlert = True
 		  	    	move = Twist()
 				#T-SECTION
-				if drive.nextDistR < 0 and drive.nextDistL < 0 and drive.turnedRecently == False and drive.reachedTSection == False:
+				if self.nextDistR < 0 and self.nextDistL < 0 and self.turnedRecently == False and self.reachedTSection == False:
 					print("Tunring Around")
 					print("Turning for " + str(turnTime) + " seconds")
 					move.linear.x = -0.005
@@ -208,11 +202,11 @@ class drive:
 					self.move_pub.publish(move)
 					rospy.sleep(turnTime)
 					move.angular.z = 0
-					drive.turnedRecently = True
-					drive.Recentered = False
-					drive.reachedTSection = True
+					self.turnedRecently = True
+					self.Recentered = False
+					self.reachedTSection = True
 				#RIGHT CORNER
-  	    			elif drive.nextDistR < 0 and drive.turnedRecently == False:
+  	    			elif self.nextDistR < 0 and self.turnedRecently == False:
 					print("Turning Right")
 					print("Driving Forwards " + str((creepTime+timeR)*speed/creepSpeed) + " seconds")
 					move.linear.x = creepSpeed
@@ -225,10 +219,10 @@ class drive:
 					self.move_pub.publish(move)
 					rospy.sleep(turnTime)
 					move.angular.z = 0
-					drive.turnedRecently = True
-					drive.Recentered = False
+					self.turnedRecently = True
+					self.Recentered = False
 				#LEFT CORNER
-    				elif drive.nextDistL < 0 and drive.turnedRecently == False:
+    				elif self.nextDistL < 0 and self.turnedRecently == False:
 					print("Turning Left")
 					print("Driving Forwards " + str((creepTime+timeL)*speed/creepSpeed) + " seconds")
 					move.linear.x = creepSpeed
@@ -241,23 +235,28 @@ class drive:
 					self.move_pub.publish(move)
 					rospy.sleep(turnTime)
 					move.angular.z = 0
-					drive.turnedRecently = True
-					drive.Recentered = False
+					self.turnedRecently = True
+					self.Recentered = False
 				#STRAIGHTAWAY
        	 			else:
-					if abs(error) < Tolerance and drive.Recentered:
+					if abs(error) < Tolerance and self.Recentered == True:
 						print("Goin' Straight")
-						move.linear.x = speed
-						move.angular.z = -(error)*P_straight 
-						drive.turnedRecently = False
+						print("Ped Alert: " + str(self.pedAlert))
+						if self.pedAlert == False:
+							move.linear.x = speed
+							move.angular.z = -(error)*P_straight 
+						else:
+							move.linear.x = 0
+							move.angular.z = 0
+						self.turnedRecently = False
 						print("X vel: " + str(speed))
-						print("Angular vel: " + str(-error*P_straight)) 
+						#print("Angular vel: " + str(-error*P_straight)) 
 		                        else:
 						print("Stopped and Recentering...")			 
-						print("Angular vel: " + str(-error*P_turn))
+						#print("Angular vel: " + str(-error*P_turn))
 						move.angular.z = -(error)*P_turn
 						move.linear.x = -0.005
-						drive.Recentered = True
+						self.Recentered = True
 				
 				self.move_pub.publish(move)
       			except CvBridgeError as e:
