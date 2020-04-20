@@ -73,7 +73,7 @@ class plate_reader:
       except CvBridgeError as e:
           print(e)
 
-      if self.isPlate(feed_img) :
+      if self.isPlate(feed_img) == True:
         realPlates = self.chop(feed_img)
 
         #Add the plates read to the plate dictionary
